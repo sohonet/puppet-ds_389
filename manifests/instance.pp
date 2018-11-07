@@ -58,7 +58,7 @@ define ds_389::instance(
 
   $instance_path = "/etc/dirsrv/slapd-${server_id}"
   exec { "setup ds: ${server_id}":
-    command => "${::ds_389::params::setup_ds} --silent General.FullMachineName=${server_host} General.SuiteSpotGroup=${group} General.SuiteSpotUserID=${user} slapd.InstallLdifFile=none slapd.RootDN=\"${root_dn}\" slapd.RootDNPwd=${root_dn_pass} slapd.ServerIdentifier=${server_id} slapd.ServerPort=${server_port} slapd.Suffix=${suffix}", # lint:ignore:140chars
+    command => "${::ds_389::params::setup_ds} --silent General.FullMachineName=${server_host} General.SuiteSpotGroup=${group} General.SuiteSpotUserID=${user} slapd.AddOrgEntries=Yes slapd.AddSampleEntries=No slapd.InstallLdifFile=suggest slapd.RootDN=\"${root_dn}\" slapd.RootDNPwd=${root_dn_pass} slapd.ServerIdentifier=${server_id} slapd.ServerPort=${server_port} slapd.Suffix=${suffix}", # lint:ignore:140chars
     path    => '/usr/sbin:/usr/bin:/sbin:/bin',
     creates => $instance_path,
     notify  => Exec["stop ${server_id} to create new token"],
