@@ -159,13 +159,13 @@ define ds_389::instance(
     ###   }
     ### }
 
-    ### $ssl_cert_name = $ssl['cert_name']
-    ### exec { "Add trust for server cert: ${server_id}":
-    ###   command => "certutil -M -n \"${ssl['cert_name']}\" -t u,u,u -d ${instance_path}",
-    ###   path    => '/usr/bin:/bin',
-    ###   unless  => "certutil -L -d ${instance_path} | grep \"${ssl['cert_name']}\" | grep \"u,u,u\"",
-    ###   notify  => Exec["Export server cert: ${server_id}"],
-    ### }
+    $ssl_cert_name = $ssl['cert_name']
+    exec { "Add trust for server cert: ${server_id}":
+      command => "certutil -M -n \"${ssl['cert_name']}\" -t u,u,u -d ${instance_path}",
+      path    => '/usr/bin:/bin',
+      unless  => "certutil -L -d ${instance_path} | grep \"${ssl['cert_name']}\" | grep \"u,u,u\"",
+      notify  => Exec["Export server cert: ${server_id}"],
+    }
   }
 
   # otherwise gen certs and add to db
