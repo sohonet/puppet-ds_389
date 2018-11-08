@@ -58,7 +58,7 @@ define ds_389::instance(
 
   $instance_path = "/etc/dirsrv/slapd-${server_id}"
   exec { "setup ds: ${server_id}":
-    command => "${::ds_389::params::setup_ds} --silent General.FullMachineName=${server_host} General.SuiteSpotGroup=${group} General.SuiteSpotUserID=${user} slapd.AddOrgEntries=Yes slapd.AddSampleEntries=No slapd.InstallLdifFile=suggest slapd.RootDN=\"${root_dn}\" slapd.RootDNPwd=${root_dn_pass} slapd.ServerIdentifier=${server_id} slapd.ServerPort=${server_port} slapd.Suffix=${suffix}", # lint:ignore:140chars
+    command => "${::ds_389::params::setup_ds} --silent General.FullMachineName=${server_host} General.SuiteSpotGroup=${group} General.SuiteSpotUserID=${user} slapd.InstallLdifFile=none slapd.RootDN=\"${root_dn}\" slapd.RootDNPwd=${root_dn_pass} slapd.ServerIdentifier=${server_id} slapd.ServerPort=${server_port} slapd.Suffix=${suffix}", # lint:ignore:140chars
     path    => '/usr/sbin:/usr/bin:/sbin:/bin',
     creates => $instance_path,
     notify  => Exec["stop ${server_id} to create new token"],
@@ -105,10 +105,9 @@ define ds_389::instance(
       order  => '2',
     }
     concat { "${server_id}_cert_bundle":
-      mode           => '0600',
-      path           => "${::ds_389::params::ssl_dir}/${server_id}-bundle.pem",
-      ensure_newline => true,
-      notify         => Exec["Create pkcs12 cert: ${server_id}"],
+      mode   => '0600',
+      path   => "${::ds_389::params::ssl_dir}/${server_id}-bundle.pem",
+      notify => Exec["Create pkcs12 cert: ${server_id}"],
     }
 
     # create pkcs12 cert
@@ -125,37 +124,48 @@ define ds_389::instance(
       refreshonly => true,
       before      => Exec["Add trust for server cert: ${server_id}"],
     }
-    $ssl['ca_cert_names'].each |$index, $cert_name| {
-      exec { "Add trust for CA${index}: ${server_id}":
-        command => "certutil -M -n \"${cert_name}\" -t CT,, -d ${instance_path}",
-        path    => '/usr/bin:/bin',
-        unless  => "certutil -L -d ${instance_path} | grep \"${cert_name}\" | grep \"CT\"",
-        require => Exec["Create cert DB: ${server_id}"],
-        notify  => Exec["Export CA cert ${index}: ${server_id}"],
-      }
-      # - export ca cert
-      exec { "Export CA cert ${index}: ${server_id}":
-        cwd     => $instance_path,
-        command => "certutil -d ${instance_path} -L -n \"${cert_name}\" -a > ${server_id}CA${index}.pem",
-        path    => '/usr/bin:/bin',
-        creates => "${instance_path}/${server_id}CA${index}.pem",
-      }
-      # - copy ca certs to openldap
-      file { "${::ds_389::cacerts_path}/${server_id}CA${index}.pem":
-        ensure  => file,
-        source  => "${instance_path}/${server_id}CA${index}.pem",
-        require => Exec["Export CA cert ${index}: ${server_id}"],
-        notify  => Exec["Rehash cacertdir: ${server_id}"],
-      }
-    }
 
-    $ssl_cert_name = $ssl['cert_name']
-    exec { "Add trust for server cert: ${server_id}":
-      command => "certutil -M -n \"${ssl['cert_name']}\" -t u,u,u -d ${instance_path}",
-      path    => '/usr/bin:/bin',
-      unless  => "certutil -L -d ${instance_path} | grep \"${ssl['cert_name']}\" | grep \"u,u,u\"",
-      notify  => Exec["Export server cert: ${server_id}"],
+    ### TODO turn this into proper intermediate functionality.
+    $ssl['ca_cert_names'].each |$index, $cert_name| {
+          exec { "Add intermediate cert${index}: ${server_id}":
+          command => "certutil -M -n \"${cert_name}\" -t P,, -d ${instance_path}",
+          path    => '/usr/bin:/bin',
+          unless  => "certutil -L -d ${instance_path} | grep \"${cert_name}\" | grep \"P\"",
+          require => Exec["Create cert DB: ${server_id}"],
+          notify  => Exec["Export server cert: ${server_id}"],
+       }
     }
+    ### $ssl['ca_cert_names'].each |$index, $cert_name| {
+    ###   exec { "Add trust for CA${index}: ${server_id}":
+    ###     command => "certutil -M -n \"${cert_name}\" -t CT,, -d ${instance_path}",
+    ###     path    => '/usr/bin:/bin',
+    ###     unless  => "certutil -L -d ${instance_path} | grep \"${cert_name}\" | grep \"CT\"",
+    ###     require => Exec["Create cert DB: ${server_id}"],
+    ###     notify  => Exec["Export CA cert ${index}: ${server_id}"],
+    ###   }
+    ###   # - export ca cert
+    ###   exec { "Export CA cert ${index}: ${server_id}":
+    ###     cwd     => $instance_path,
+    ###     command => "certutil -d ${instance_path} -L -n \"${cert_name}\" -a > ${server_id}CA${index}.pem",
+    ###     path    => '/usr/bin:/bin',
+    ###     creates => "${instance_path}/${server_id}CA${index}.pem",
+    ###   }
+    ###   # - copy ca certs to openldap
+    ###   file { "${::ds_389::cacerts_path}/${server_id}CA${index}.pem":
+    ###     ensure  => file,
+    ###     source  => "${instance_path}/${server_id}CA${index}.pem",
+    ###     require => Exec["Export CA cert ${index}: ${server_id}"],
+    ###     notify  => Exec["Rehash cacertdir: ${server_id}"],
+    ###   }
+    ### }
+
+    ### $ssl_cert_name = $ssl['cert_name']
+    ### exec { "Add trust for server cert: ${server_id}":
+    ###   command => "certutil -M -n \"${ssl['cert_name']}\" -t u,u,u -d ${instance_path}",
+    ###   path    => '/usr/bin:/bin',
+    ###   unless  => "certutil -L -d ${instance_path} | grep \"${ssl['cert_name']}\" | grep \"u,u,u\"",
+    ###   notify  => Exec["Export server cert: ${server_id}"],
+    ### }
   }
 
   # otherwise gen certs and add to db
