@@ -111,8 +111,9 @@ define ds_389::instance(
     }
 
     # create pkcs12 cert
+    $ssl_cert_name = $ssl['cert_name']
     exec { "Create pkcs12 cert: ${server_id}":
-      command     => "openssl pkcs12 -export -password pass:${cert_db_pass} -name $ssl['cert_name'] -in ${::ds_389::params::ssl_dir}/${server_id}-bundle.pem -out ${::ds_389::params::ssl_dir}/${server_id}.p12", # lint:ignore:140chars
+      command     => "openssl pkcs12 -export -password pass:${cert_db_pass} -name ${$ssl_cert_name} -in ${::ds_389::params::ssl_dir}/${server_id}-bundle.pem -out ${::ds_389::params::ssl_dir}/${server_id}.p12", # lint:ignore:140chars
       path        => '/usr/bin:/bin',
       refreshonly => true,
       notify      => Exec["Create cert DB: ${server_id}"],
@@ -159,7 +160,6 @@ define ds_389::instance(
     ###   }
     ### }
 
-    $ssl_cert_name = $ssl['cert_name']
     exec { "Add trust for server cert: ${server_id}":
       command => "certutil -M -n \"${ssl['cert_name']}\" -t u,u,u -d ${instance_path}",
       path    => '/usr/bin:/bin',
