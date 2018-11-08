@@ -107,7 +107,7 @@ define ds_389::instance(
     concat { "${server_id}_cert_bundle":
       mode           => '0600',
       path           => "${::ds_389::params::ssl_dir}/${server_id}-bundle.pem",
-      ensure_newline => true
+      ensure_newline => true,
       notify         => Exec["Create pkcs12 cert: ${server_id}"],
     }
 
