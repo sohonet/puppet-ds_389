@@ -112,7 +112,7 @@ define ds_389::instance(
 
     # create pkcs12 cert
     exec { "Create pkcs12 cert: ${server_id}":
-      command     => "openssl pkcs12 -export -password pass:${cert_db_pass} -name ${server_host} -in ${::ds_389::params::ssl_dir}/${server_id}-bundle.pem -out ${::ds_389::params::ssl_dir}/${server_id}.p12", # lint:ignore:140chars
+      command     => "openssl pkcs12 -export -password pass:${cert_db_pass} -name $ssl['cert_name'] -in ${::ds_389::params::ssl_dir}/${server_id}-bundle.pem -out ${::ds_389::params::ssl_dir}/${server_id}.p12", # lint:ignore:140chars
       path        => '/usr/bin:/bin',
       refreshonly => true,
       notify      => Exec["Create cert DB: ${server_id}"],
