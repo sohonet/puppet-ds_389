@@ -129,14 +129,15 @@ define ds_389::instance(
 
     ### TODO turn this into proper intermediate functionality.
     $ssl['ca_cert_names'].each |$index, $cert_name| {
-          exec { "Add intermediate cert${index}: ${server_id}":
-          command => "certutil -M -n \"${cert_name}\" -t P,, -d ${instance_path}",
-          path    => '/usr/bin:/bin',
-          unless  => "certutil -L -d ${instance_path} | grep \"${cert_name}\" | grep \"P\"",
-          require => Exec["Create cert DB: ${server_id}"],
-          notify  => Exec["Export server cert: ${server_id}"],
-       }
+      exec { "Add intermediate cert${index}: ${server_id}":
+        command => "certutil -M -n \"${cert_name}\" -t CT,, -d ${instance_path}",
+        path    => '/usr/bin:/bin',
+        unless  => "certutil -L -d ${instance_path} | grep \"${cert_name}\" | grep \"P\"",
+        require => Exec["Create cert DB: ${server_id}"],
+        notify  => Exec["Export server cert: ${server_id}"],
+      }
     }
+
     ### $ssl['ca_cert_names'].each |$index, $cert_name| {
     ###   exec { "Add trust for CA${index}: ${server_id}":
     ###     command => "certutil -M -n \"${cert_name}\" -t CT,, -d ${instance_path}",
